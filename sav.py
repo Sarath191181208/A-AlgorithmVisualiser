@@ -5,7 +5,6 @@ import time
 from queue import PriorityQueue
 import pygame_gui
 
-# todo must add buttons and fix the color issue
 pygame.init()
 clock = pygame.time.Clock()
 WIN = pygame.display.set_mode((600, 680))
@@ -13,8 +12,6 @@ pygame.display.set_caption('A* visualiser')
 FPS = 20
 
 manager = pygame_gui.UIManager((600, 680))
-# background = pygame.Surface((600, 680))
-# background.fill(pygame.Color('#000000'))
 
 
 def PYtxt(txt: str, fontSize: int = 28, font: str = 'freesansbold.ttf', fontColour: tuple = (0, 0, 0)):
@@ -47,7 +44,6 @@ def save():
         boardState['board'][2] = board.end.get_pos()
         boardState['board']['rows'] = board.rows
         boardState['board']['cols'] = board.cols
-        # outfile.write(json_object)
 
         file_data = json.load(outfile)
         outfile.seek(0, 0)
@@ -83,10 +79,6 @@ def load():
             board.draw()
 
 
-# WIN.blit(PYtxt('Solved'), (20, 560) -> position)
-# pygame.display.update()
-# win.blit(text, (x + (colGap/2 - text.get_width()/2),
-#                 y + (rowGap/2 - text.get_height()/2)))
 WHITE = (215, 215, 215)
 GREAY = (70, 70, 70)
 BLACK = (60, 60, 60)
@@ -121,8 +113,6 @@ def toggleTheme(clr):
 
 translationFactor = 0
 
-# todo rotation of arrow : mouse hint/tooltip    -> https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&ved=2ahUKEwjy9PrnxbPxAhXFW3wKHeLcC5QQFnoECAIQAA&url=https%3A%2F%2Fpygame-gui.readthedocs.io%2Fen%2Flatest%2Fpygame_gui.elements.html&usg=AOvVaw2pKZFNKauew3F4V-9vsAVg
-
 
 class Grid():
     def __init__(self, cols: int = 4, rows: int = 4, width: int = 400, height: int = 400):
@@ -143,18 +133,16 @@ class Grid():
         ]
 
     def draw(self, win=None):
-        # WIN.blit(background, (0, 0))
         if win == None:
             win = WIN
         win.fill(boardClr)
         rowGap = self.height / self.rows
         colGap = self.width / self.cols
-        # Draw Cubes
+
         for i in range(self.rows):
             for j in range(self.cols):
                 self.cubes[i][j].draw(win)
         thick = 1
-        # pygame.draw.line(win, (0, 0, 0), (i * rowGap, 0),i * rowGap, self.height), thick)
         for i in range(self.rows+1):
             pygame.draw.line(win, BLACK, (0, i*rowGap),
                              (self.height, rowGap*i), thick)
@@ -224,8 +212,6 @@ class Grid():
                         open_set.put((f_score[neighbour], count, neighbour))
                         open_set_hash.add(neighbour)
                         neighbour.update_colour(CYAN)
-
-                        # neighbor.make_open()
                         self.draw()
             if current != self.start:
                 current.update_colour(TURTLEGREEN)
@@ -301,27 +287,17 @@ class Cube():
         colGap = self.width / self.cols
         x = self.col * colGap
         y = self.row * rowGap
-        # if self.colour == WHITE:
-        #     pygame.draw.rect(win, self.colour,
-        #                      pygame.Rect(x+3, y+3, colGap-5, rowGap-5))
         if not self.placed:
             if self.colouring:
                 pygame.draw.rect(win, WHITE,
                                  pygame.Rect(x, y, colGap, rowGap))
             pygame.draw.rect(win, self.colour,
                              pygame.Rect(x+3, y+3, colGap-5, rowGap-5))
-            # pygame.draw.rect(win, self.colour,
-            #                  pygame.Rect(x, y, colGap, rowGap))
         else:
             pygame.draw.rect(win, self.colour,
                              pygame.Rect(x, y, colGap, rowGap))
 
-        # if self.value == 1:
-        #newImg = pygame.transform.scale(queenImg, (int(colGap-self.centerFactor), int(rowGap-self.centerFactor)))
-        #win.blit(newImg, (x+self.centerFactor/2, y+self.centerFactor/2))
-
         if self.colour == startClr:
-            # 14 = 21
             text = PYtxt(">", int(1.3 * rowGap), pygame.font.match_font(
                 'consolas', bold=True, italic=False))
             win.blit(text, (x + (colGap/2 - text.get_width()/2),
@@ -331,8 +307,6 @@ class Cube():
                 'callibri', bold=False, italic=False))
             WIN.blit(txt, (x + (colGap/2 - txt.get_width()/2),
                            y + (rowGap/2 - txt.get_height()/2)))
-            # WIN.blit(text, (x + (colGap/2 - text.get_width()/2),
-            # y + (rowGap/2 - text.get_height()/2) - txt.get_height()/4 - 0.5))
 
     def get_pos(self):
         return (self.row, self.col)
