@@ -13,8 +13,8 @@ pygame.display.set_caption('A* visualiser')
 FPS = 20
 
 manager = pygame_gui.UIManager((600, 680))
-background = pygame.Surface((600, 680))
-background.fill(pygame.Color('#000000'))
+# background = pygame.Surface((600, 680))
+# background.fill(pygame.Color('#000000'))
 
 
 def PYtxt(txt: str, fontSize: int = 28, font: str = 'freesansbold.ttf', fontColour: tuple = (0, 0, 0)):
@@ -25,6 +25,62 @@ def h(pos1, pos2):
     x1, y1 = pos1
     x2, y2 = pos2
     return abs(x2-x1) + abs(y2-y1)
+
+
+def save():
+    if not os.path.exists('./saveBoard.json'):
+        with open('./saveBoard.json', 'a') as outfile:
+            json_object = json.dumps({})
+            outfile.write(json_object)
+    with open('./saveBoard.json', 'r+') as outfile:
+        boardState = {}
+        boardState['board'] = {}
+        helperDic = {}
+        for row in board.cubes:
+            for cube in row:
+                if cube.colour == obstacleClr:
+                    x, y = cube.get_pos()
+                    key = str(x)+','+str(y)
+                    helperDic[key] = cube.colour
+        boardState['board'][0] = helperDic
+        boardState['board'][1] = board.start.get_pos()
+        boardState['board'][2] = board.end.get_pos()
+        boardState['board']['rows'] = board.rows
+        boardState['board']['cols'] = board.cols
+        # outfile.write(json_object)
+
+        file_data = json.load(outfile)
+        outfile.seek(0, 0)
+        outfile.truncate()
+        file_data.update(boardState)
+        outfile.write(json.dumps(file_data, indent=4))
+
+
+def load():
+    if os.path.exists('./saveBoard.json'):
+        data = json.load(open('./saveBoard.json'))
+        data = data['board']
+        if board.rows == data['rows'] and board.cols == data['cols']:
+            board.reset()
+
+            x, y = data['1'][0], data['1'][1]
+            board.start = board.cubes[x][y]
+            board.cubes[x][y].colour = startClr
+            board.cubes[x][y].placed = True
+
+            x, y = data['2'][0], data['2'][1]
+            board.end = board.cubes[x][y]
+            board.cubes[x][y].colour = endClr
+            board.cubes[x][y].placed = True
+
+            for items in data['0']:
+                items = items.split(',')
+                x = int(items[0])
+                y = int(items[1])
+                board.cubes[x][y].colour = obstacleClr
+                board.cubes[x][y].placed = True
+
+            board.draw()
 
 
 # WIN.blit(PYtxt('Solved'), (20, 560) -> position)
@@ -44,14 +100,23 @@ CYAN = (100, 210, 180)
 YELLOW = (225, 235, 70)
 AMBER = (220, 0, 50)
 TRANSPARENT = (0, 0, 0, 0)
+absBlack = (0, 0, 0)
 
 checksClr = BLUE
 boardClr = WHITE
-txtClr = GREAY
+textClr = WHITE if boardClr == BLACK else absBlack
+helperTxtClr = GREAY
 startClr = ORANGE
 endClr = GREEN
 obstacleClr = BLACK
 pathClr = VIOLET
+
+
+def toggleTheme(clr):
+    if clr == WHITE:
+        return(BLACK, WHITE, (120, 120, 120))
+    else:
+        return(WHITE, absBlack, GREAY)
 
 
 translationFactor = 0
@@ -78,10 +143,10 @@ class Grid():
         ]
 
     def draw(self, win=None):
-        WIN.blit(background, (0, 0))
+        # WIN.blit(background, (0, 0))
         if win == None:
             win = WIN
-        win.fill(BLACK)
+        win.fill(boardClr)
         rowGap = self.height / self.rows
         colGap = self.width / self.cols
         # Draw Cubes
@@ -100,8 +165,10 @@ class Grid():
         pygame.display.update()
 
     def clicked(self, pos):
+
         x, y = pos
         if x >= self.rows or y >= self.cols or x < 0:
+            self.draw()
             return -1
 
         if self.start == None and self.cubes[x][y].colour == WHITE:
@@ -199,62 +266,19 @@ class Grid():
         else:
             text = "walls"
             postfix = ''
-        txt = PYtxt(f'place the {text} {postfix}', 22)
-        WIN.blit(txt, (20, self.height+txt.get_height()))
-
-        x, y = 320, self.height + txt.get_height()
-        text = PYtxt("L", 16)
-        WIN.blit(text, (x, y))
-        clickTxt = PYtxt('left click for inserting', 11)
-        WIN.blit(clickTxt,
-                 (x-clickTxt.get_width()*0.8, y-text.get_height()))
-        pygame.draw.rect(WIN, (0, 0, 0),
-                         pygame.Rect(x-5, y-4, text.get_width()+10, text.get_height()+6), 1)
-
-        x, y = 360, self.height + txt.get_height()
-        text = PYtxt("R", 16)
-        clickTxt = PYtxt('right click for deleting', 11)
-        WIN.blit(clickTxt,
-                 (x-clickTxt.get_width()*0.7, y+text.get_height()+6))
-        WIN.blit(text, (x, y))
-        pygame.draw.rect(WIN, (0, 0, 0),
-                         pygame.Rect(x-5, y-4, text.get_width()+10, text.get_height()+6), 1)
-
-        x, y = 430, self.height + txt.get_height()
-        text = PYtxt("S", 16)
-        clickTxt = PYtxt('space to start', 11)
-        WIN.blit(clickTxt,
-                 (x-clickTxt.get_width()*0.7, y-text.get_height()))
-        WIN.blit(text, (x, y))
-        pygame.draw.rect(WIN, (0, 0, 0),
-                         pygame.Rect(x-5, y-4, text.get_width()+10, text.get_height()+6), 1)
-
-        x, y = 480, self.height + txt.get_height()
-        text = PYtxt("r", 16)
-        clickTxt = PYtxt('r key to reset', 11)
-        WIN.blit(clickTxt,
-                 (x-clickTxt.get_width()*0.7, y+text.get_height()+6))
-        WIN.blit(text, (x, y))
-        pygame.draw.rect(WIN, (0, 0, 0),
-                         pygame.Rect(x-5, y-4, text.get_width()+10, text.get_height()+6), 1)
-
-        x, y = 520, self.height + txt.get_height()
-        text = PYtxt("s", 16)
-        clickTxt = PYtxt('s key to save', 11)
-        WIN.blit(clickTxt,
-                 (x-clickTxt.get_width()*0.7, y-text.get_height()))
-        WIN.blit(text, (x, y))
-        pygame.draw.rect(WIN, (0, 0, 0),
-                         pygame.Rect(x-5, y-4, text.get_width()+10, text.get_height()+6), 1)
-
-        x, y = 560, self.height + txt.get_height()
-        text = PYtxt("o", 16)
-        clickTxt = PYtxt(' o to load saved', 11)
-        WIN.blit(clickTxt,
-                 (x-clickTxt.get_width()*0.7, y+text.get_height()+6))
-        WIN.blit(text, (x, y))
-        pygame.draw.rect(WIN, (0, 0, 0),
-                         pygame.Rect(x-5, y-4, text.get_width()+10, text.get_height()+6), 1)
+        txt = PYtxt(f'place the {text} {postfix}', 16, fontColour=textClr)
+        y = (WIN.get_height() -
+             self.height)
+        y /= 2
+        y += self.height
+        y -= txt.get_height()
+        WIN.blit(txt, (20, y))
+        y += txt.get_height()
+        txt = PYtxt('left click for insert', 11, fontColour=helperTxtClr)
+        WIN.blit(txt, (20, y))
+        y += txt.get_height()
+        txt = PYtxt('right click to delete', 11, fontColour=helperTxtClr)
+        WIN.blit(txt, (20, y))
 
 
 class Cube():
@@ -339,12 +363,37 @@ class Cube():
             self.colour = colour
 
 
-board = Grid(20, 20, WIN.get_width(), WIN.get_width())
+board = Grid(30, 30, WIN.get_width(), WIN.get_width())
 board.draw()
 run = True
-hello_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 600), (100, 50)),
-                                            text='Say Hello',
-                                            manager=manager, tool_tip_text="animations")
+
+gap = 10
+start = 240
+y = 612
+n = 1
+toggleTheme_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, y), (60, 40)),
+                                                  text='Toggle',
+                                                  manager=manager, tool_tip_text="Toggle  the theme")
+start += 60
+n += 1
+run_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, y), (60, 40)),
+                                          text='Start',
+                                          manager=manager, tool_tip_text="start the visualisation (space : key)")
+start += 60
+n += 1
+reset_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, 612), (60, 40)),
+                                            text='Reset',
+                                            manager=manager, tool_tip_text="reset the board or (r : key)")
+start += 60
+n += 1
+save_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, 612), (60, 40)),
+                                           text='Save',
+                                           manager=manager, tool_tip_text="saves the board or (s : key)")
+start += 60
+n += 1
+load_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start + n * gap, 612), (60, 40)),
+                                           text='Load',
+                                           manager=manager, tool_tip_text="loads the saved board or (o : key)")
 
 while run:
 
@@ -370,70 +419,36 @@ while run:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE and board.start and board.end:
                 for row in board.cubes:
-                    for spot in row:
-                        spot.update_neighbours(board)
+                    for cube in row:
+                        cube.update_neighbours(board)
                 board.a_star()
             if event.key == pygame.K_r:
                 board.reset()
-            # save and load
             if event.key == pygame.K_s:
-                if not os.path.exists('./saveBoard.json'):
-                    with open('./saveBoard.json', 'a') as outfile:
-                        json_object = json.dumps({})
-                        outfile.write(json_object)
-                with open('./saveBoard.json', 'r+') as outfile:
-                    boardState = {}
-                    boardState['board'] = {}
-                    helperDic = {}
-                    for row in board.cubes:
-                        for cube in row:
-                            if cube.colour == obstacleClr:
-                                x, y = cube.get_pos()
-                                key = str(x)+','+str(y)
-                                helperDic[key] = cube.colour
-                    boardState['board'][0] = helperDic
-                    boardState['board'][1] = board.start.get_pos()
-                    boardState['board'][2] = board.end.get_pos()
-                    boardState['board']['rows'] = board.rows
-                    boardState['board']['cols'] = board.cols
-                    # outfile.write(json_object)
-
-                    file_data = json.load(outfile)
-                    outfile.seek(0, 0)
-                    outfile.truncate()
-                    file_data.update(boardState)
-                    outfile.write(json.dumps(file_data, indent=4))
+                if board.start and board.end:
+                    save()
 
             if event.key == pygame.K_o:
-                if os.path.exists('./saveBoard.json'):
-                    data = json.load(open('./saveBoard.json'))
-                    data = data['board']
-                    if board.rows == data['rows'] and board.cols == data['cols']:
-                        board.reset()
-
-                        x, y = data['1'][0], data['1'][1]
-                        board.start = board.cubes[x][y]
-                        board.cubes[x][y].colour = startClr
-                        board.cubes[x][y].placed = True
-
-                        x, y = data['2'][0], data['2'][1]
-                        board.end = board.cubes[x][y]
-                        board.cubes[x][y].colour = endClr
-                        board.cubes[x][y].placed = True
-
-                        for items in data['0']:
-                            items = items.split(',')
-                            x = int(items[0])
-                            y = int(items[1])
-                            board.cubes[x][y].colour = obstacleClr
-                            board.cubes[x][y].placed = True
-
-                        board.draw()
+                load()
 
         if event.type == pygame.USEREVENT:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                if event.ui_element == hello_button:
-                    print('Hello World!')
+                if event.ui_element == reset_button:
+                    board.reset()
+                if event.ui_element == save_button:
+                    if board.start and board.end:
+                        save()
+                if event.ui_element == load_button:
+                    load()
+                if event.ui_element == run_button:
+                    if board.start and board.end:
+                        for row in board.cubes:
+                            for cube in row:
+                                cube.update_neighbours(board)
+                        board.a_star()
+                if event.ui_element == toggleTheme_button:
+                    boardClr, textClr, helperTxtClr = toggleTheme(boardClr)
+                    board.draw()
         manager.process_events(event)
     manager.update(time_delta)
 
