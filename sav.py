@@ -3,12 +3,18 @@ import os
 import pygame
 import time
 from queue import PriorityQueue
+import pygame_gui
 
+# todo must add buttons and fix the color issue
 pygame.init()
 clock = pygame.time.Clock()
 WIN = pygame.display.set_mode((600, 680))
 pygame.display.set_caption('A* visualiser')
 FPS = 20
+
+manager = pygame_gui.UIManager((600, 680))
+background = pygame.Surface((600, 680))
+background.fill(pygame.Color('#000000'))
 
 
 def PYtxt(txt: str, fontSize: int = 28, font: str = 'freesansbold.ttf', fontColour: tuple = (0, 0, 0)):
@@ -50,6 +56,8 @@ pathClr = VIOLET
 
 translationFactor = 0
 
+# todo rotation of arrow : mouse hint/tooltip    -> https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&ved=2ahUKEwjy9PrnxbPxAhXFW3wKHeLcC5QQFnoECAIQAA&url=https%3A%2F%2Fpygame-gui.readthedocs.io%2Fen%2Flatest%2Fpygame_gui.elements.html&usg=AOvVaw2pKZFNKauew3F4V-9vsAVg
+
 
 class Grid():
     def __init__(self, cols: int = 4, rows: int = 4, width: int = 400, height: int = 400):
@@ -70,9 +78,10 @@ class Grid():
         ]
 
     def draw(self, win=None):
+        WIN.blit(background, (0, 0))
         if win == None:
             win = WIN
-        win.fill(boardClr)
+        win.fill(BLACK)
         rowGap = self.height / self.rows
         colGap = self.width / self.cols
         # Draw Cubes
@@ -94,17 +103,20 @@ class Grid():
         x, y = pos
         if x >= self.rows or y >= self.cols or x < 0:
             return -1
-        self.cubes[x][y].placed = True
+
         if self.start == None and self.cubes[x][y].colour == WHITE:
             self.cubes[x][y].colour = startClr
             self.start = self.cubes[x][y]
+            self.cubes[x][y].placed = True
 
         elif self.end == None and self.cubes[x][y].colour == WHITE:
             self.cubes[x][y].colour = endClr
             self.end = self.cubes[x][y]
+            self.cubes[x][y].placed = True
 
         elif self.cubes[x][y].colour == WHITE:
             self.cubes[x][y].colour = obstacleClr
+            self.cubes[x][y].placed = True
 
         self.draw()
 
@@ -132,7 +144,6 @@ class Grid():
 
             if current == self.end:
                 self.reconstruct_path(came_from)
-                print("ended")
                 return True
             for neighbour in current.neighbours:
                 temp_g_score = g_score[current] + 1
@@ -146,6 +157,7 @@ class Grid():
                         open_set.put((f_score[neighbour], count, neighbour))
                         open_set_hash.add(neighbour)
                         neighbour.update_colour(CYAN)
+
                         # neighbor.make_open()
                         self.draw()
             if current != self.start:
@@ -168,6 +180,8 @@ class Grid():
             self.draw()
 
     def delete(self, x, y):
+        self.cubes[x][y].placed = False
+        self.cubes[x][y].colouring = False
         self.cubes[x][y].colour = WHITE
         if self.cubes[x][y] == self.start:
             self.start = None
@@ -256,15 +270,24 @@ class Cube():
         self.colour = WHITE
         self.placed = False
         self.neighbours = []
+        self.colouring = False
 
     def draw(self, win):
         rowGap = self.height / self.rows
         colGap = self.width / self.cols
         x = self.col * colGap
         y = self.row * rowGap
+        # if self.colour == WHITE:
+        #     pygame.draw.rect(win, self.colour,
+        #                      pygame.Rect(x+3, y+3, colGap-5, rowGap-5))
         if not self.placed:
+            if self.colouring:
+                pygame.draw.rect(win, WHITE,
+                                 pygame.Rect(x, y, colGap, rowGap))
             pygame.draw.rect(win, self.colour,
-                             pygame.Rect(x+2, y+2, colGap-3, rowGap-3))
+                             pygame.Rect(x+3, y+3, colGap-5, rowGap-5))
+            # pygame.draw.rect(win, self.colour,
+            #                  pygame.Rect(x, y, colGap, rowGap))
         else:
             pygame.draw.rect(win, self.colour,
                              pygame.Rect(x, y, colGap, rowGap))
@@ -312,14 +335,21 @@ class Cube():
 
     def update_colour(self, colour):
         if not (self.colour == startClr or self.colour == endClr):
+            self.colouring = True
             self.colour = colour
 
 
-board = Grid(30, 30, WIN.get_width(), WIN.get_width())
+board = Grid(20, 20, WIN.get_width(), WIN.get_width())
 board.draw()
 run = True
+hello_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 600), (100, 50)),
+                                            text='Say Hello',
+                                            manager=manager, tool_tip_text="animations")
+
 while run:
+
     clock.tick(FPS)
+    time_delta = clock.tick(FPS)/1000.0
     if pygame.mouse.get_pressed()[0]:
         x, y = pygame.mouse.get_pos()
         gap = board.width // board.rows
@@ -374,9 +404,6 @@ while run:
                     file_data.update(boardState)
                     outfile.write(json.dumps(file_data, indent=4))
 
-                    # json_object = json.dumps(boardState, indent=4)
-                    # outfile.write(json_object)
-                    # todo save function think about no of cols and rows width and height
             if event.key == pygame.K_o:
                 if os.path.exists('./saveBoard.json'):
                     data = json.load(open('./saveBoard.json'))
@@ -402,6 +429,16 @@ while run:
                             board.cubes[x][y].placed = True
 
                         board.draw()
+
+        if event.type == pygame.USEREVENT:
+            if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.ui_element == hello_button:
+                    print('Hello World!')
+        manager.process_events(event)
+    manager.update(time_delta)
+
+    manager.draw_ui(WIN)
+    pygame.display.update()
 
 
 pygame.quit()
