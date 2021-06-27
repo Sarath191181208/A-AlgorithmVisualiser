@@ -16,7 +16,7 @@ pygame.display.set_caption('A* visualiser')
 FPS = 20
 manager = pygame_gui.UIManager((600, 680), 'themePygame_gui.json')
 
-# TODO:  fix  dark  theme errors
+# TODO:  animation of some stuff
 
 # return from a simple text to pygame text object
 
@@ -70,8 +70,8 @@ def load():
         data = json.load(open('./saveBoard.json'))
         data = data['board']
         if board.rows == data['rows'] and board.cols == data['cols']:
-            # board reset has a property noAnimation which doesnt play animation
-            board.reset(True)
+            # board clear has a property noAnimation which doesnt play animation
+            board.clear(True)
 
             x, y = data['1'][0], data['1'][1]
             board.start = board.cubes[x][y]
@@ -138,6 +138,7 @@ TURTLEGREEN = pygame.Color('#50c85a')
 VIOLET = pygame.Color('#9632dc')
 ORANGE = pygame.Color('#dc7832')
 CYAN = pygame.Color('#64d2b4')
+BLUE = pygame.Color('#03Abfc')
 absBlack = pygame.Color('#000000')
 
 boardClr = WHITE
@@ -145,9 +146,9 @@ textClr = WHITE if boardClr == BLACK else absBlack
 helperTxtClr = GREAY
 startClr = ORANGE
 endClr = GREEN
-obstacleClr = BLACK
+obstacleClr = (160, 160, 160, 0.8)
 pathClr = VIOLET
-gridClr = BLACK
+gridClr = (160, 160, 160, 0.8)
 
 
 def toggleTheme(clr):
@@ -230,10 +231,10 @@ class Grid():
         animate = 0.001
         while(True):
             for i in range(self.rows+1):
-                pygame.draw.line(win, BLACK, (0, i*rowGap),
+                pygame.draw.line(win, gridClr, (0, i*rowGap),
                                  (self.height*animate, rowGap*i), 1)
             for i in range(self.cols+1):
-                pygame.draw.line(win, BLACK, (i*colGap, 0),
+                pygame.draw.line(win, gridClr, (i*colGap, 0),
                                  (colGap*i, self.width*animate), 1)
             animate += 0.00075
             if animate >= 1:
@@ -248,7 +249,6 @@ class Grid():
         if x >= self.rows or y >= self.cols or x < 0:
             self.draw()
             return -1
-
         # if  no  start
         if self.start == None and self.cubes[x][y].colour == WHITE:
             self.cubes[x][y].colour = startClr
@@ -265,7 +265,8 @@ class Grid():
         elif self.cubes[x][y].colour == WHITE:
             self.cubes[x][y].colour = obstacleClr
             self.cubes[x][y].placed = True
-        self.draw()
+        self.cubes[x][y].clickAnimation()
+        # self.draw()
 
     def a_star(self):
         # traverses cubes and updates neighbours
@@ -336,7 +337,15 @@ class Grid():
 
         return False
 
-    def reset(self, noAnimation=False):
+    def reset(self):
+        for row in self.cubes:
+            for cube in row:
+                if cube.placed == False:
+                    cube.reset()
+                    cube.update()
+        board.draw()
+
+    def clear(self, noAnimation=False):
         count = 0
         for row in self.cubes:
             for cube in row:
@@ -427,11 +436,11 @@ class Cube():
                             y + (rowGap/2 - text.get_height()/2)))
 
         # if this cube is end draw {O} onto the plane ie on cube
-        if self.colour == endClr:
-            txt = PYtxt("O", int(1.3 * rowGap), pygame.font.match_font(
-                'callibri', bold=False, italic=False))
-            WIN.blit(txt, (x + (colGap/2 - txt.get_width()/2),
-                           y + (rowGap/2 - txt.get_height()/2)))
+        # if self.colour == endClr:
+        #     txt = PYtxt("O", int(1.3 * rowGap), pygame.font.match_font(
+        #         'callibri', bold=False, italic=False))
+        #     WIN.blit(txt, (x + (colGap/2 - txt.get_width()/2),
+        #                    y + (rowGap/2 - txt.get_height()/2)))
 
     # drawing numbers
         if not self.value == None and self.show_numbers:
@@ -490,6 +499,22 @@ class Cube():
             pygame.draw.rect(WIN, BLACK,
                              pygame.Rect(x-1, y-1, colGap-1, rowGap-1))
 
+    def clickAnimation(self):
+        rowGap = self.height / self.rows
+        colGap = self.width / self.cols
+        x = self.col * colGap
+        y = self.row * rowGap
+        width = colGap - 10
+        while True:
+            width += 0.05
+            pygame.draw.rect(WIN, self.colour,
+                             pygame.Rect(x+(colGap-width)/2, y+(colGap-width)/2, width, width))
+            pygame.display.update()
+            if width >= colGap:
+                break
+
+        self.draw(WIN)
+
 
 board = Grid(30, 30, WIN.get_width(), WIN.get_width())
 board.animation()
@@ -506,7 +531,7 @@ y = 612
 n = 0
 reset_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, y), (60, 40)),
                                             text=f'Reset',
-                                            manager=manager, tool_tip_text="Reset the board ( r : key )")
+                                            manager=manager, tool_tip_text="Reset the board    ( r : key )")
 start += 60
 n += 1
 toggleNumber_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, y), (60, 40)),
@@ -516,7 +541,7 @@ start += 60
 n += 1
 toggleTheme_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, y), (60, 40)),
                                                   text='Theme',
-                                                  manager=manager, tool_tip_text="Toggle the theme ( t : key )")
+                                                  manager=manager, tool_tip_text="Toggle the theme    ( t : key )")
 start += 60
 n += 1
 run_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, y), (60, 40)),
@@ -526,12 +551,12 @@ start += 60
 n += 1
 clear_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, 612), (60, 40)),
                                             text='Clear',
-                                            manager=manager, tool_tip_text="clear the board or (c : key)")
+                                            manager=manager, tool_tip_text="clear the board or   (c : key)")
 start += 60
 n += 1
 save_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, 612), (60, 40)),
                                            text='Save',
-                                           manager=manager, tool_tip_text="saves the board or (s : key)")
+                                           manager=manager, tool_tip_text="saves the board or   (s : key)")
 start += 60
 n += 1
 load_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start + n * gap, 612), (60, 40)),
@@ -570,10 +595,11 @@ while run:
         if event.type == pygame.KEYDOWN:
 
             if event.key == pygame.K_SPACE and board.start and board.end:
+                board.reset()
                 board.a_star()
 
             if event.key == pygame.K_c:
-                board.reset()
+                board.clear()
 
             if event.key == pygame.K_s:
                 if board.start and board.end:
@@ -583,12 +609,7 @@ while run:
                 load()
 
             if event.key == pygame.K_r:
-                for row in board.cubes:
-                    for cube in row:
-                        if cube.placed == False:
-                            cube.reset()
-                            cube.update()
-                board.draw()
+                board.reset()
 
             if event.key == pygame.K_n:
                 board.show_numbers = not board.show_numbers
@@ -603,7 +624,7 @@ while run:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
 
                 if event.ui_element == clear_button:
-                    board.reset()
+                    board.clear()
 
                 if event.ui_element == save_button:
                     if board.start and board.end:
@@ -614,6 +635,7 @@ while run:
 
                 if event.ui_element == run_button:
                     if board.start and board.end:
+                        board.reset()
                         board.a_star()
 
                 if event.ui_element == toggleTheme_button:
@@ -626,12 +648,7 @@ while run:
                     board.draw()
 
                 if event.ui_element == reset_button:
-                    for row in board.cubes:
-                        for cube in row:
-                            if cube.placed == False:
-                                cube.reset()
-                                cube.update()
-                    board.draw()
+                    board.reset()
 
         manager.process_events(event)
     manager.update(time_delta)
