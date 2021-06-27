@@ -130,15 +130,15 @@ def help_bar():
 
 
 # colours
-WHITE = (215, 215, 215)
-GREAY = (70, 70, 70)
-BLACK = (60, 60, 60)
-GREEN = (30, 180, 100)
-TURTLEGREEN = (80, 200, 90)
-VIOLET = (150, 50, 220)
-ORANGE = (220, 120, 50)
-CYAN = (100, 210, 180)
-absBlack = (0, 0, 0)
+WHITE = pygame.Color('#d7d7d7')
+GREAY = pygame.Color('#464646')
+BLACK = pygame.Color('#3c3c3c')
+GREEN = pygame.Color('#1eb464')
+TURTLEGREEN = pygame.Color('#50c85a')
+VIOLET = pygame.Color('#9632dc')
+ORANGE = pygame.Color('#dc7832')
+CYAN = pygame.Color('#64d2b4')
+absBlack = pygame.Color('#000000')
 
 boardClr = WHITE
 textClr = WHITE if boardClr == BLACK else absBlack
