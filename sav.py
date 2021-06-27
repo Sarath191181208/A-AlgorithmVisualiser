@@ -139,7 +139,9 @@ VIOLET = pygame.Color('#9632dc')
 ORANGE = pygame.Color('#dc7832')
 CYAN = pygame.Color('#64d2b4')
 BLUE = pygame.Color('#03Abfc')
+YELLOW = pygame.Color('#ffeb00')
 absBlack = pygame.Color('#000000')
+
 
 boardClr = WHITE
 textClr = WHITE if boardClr == BLACK else absBlack
@@ -177,7 +179,7 @@ class Grid():
         # -------
 
         # used to show number
-        self.show_numbers = True
+        self.show_numbers = False
 
         # creates self.cubes as like a 2D array
         self.create_board()
@@ -363,9 +365,10 @@ class Grid():
     def reconstruct_path(self, came_from):
         current = self.end
         while current in came_from:
-            time.sleep(0.05)
+
             current = came_from[current]
             current.update_colour(pathClr)
+            current.clickAnimation(3)
 
     def delete(self, x, y):
         if x >= self.rows or y >= self.cols or x < 0:
@@ -499,12 +502,12 @@ class Cube():
             pygame.draw.rect(WIN, BLACK,
                              pygame.Rect(x-1, y-1, colGap-1, rowGap-1))
 
-    def clickAnimation(self):
+    def clickAnimation(self, sub=0):
         rowGap = self.height / self.rows
         colGap = self.width / self.cols
         x = self.col * colGap
         y = self.row * rowGap
-        width = colGap - 10
+        width = colGap - 10 - sub
         while True:
             width += 0.05
             pygame.draw.rect(WIN, self.colour,
