@@ -2,7 +2,7 @@
 import json
 import os
 # ---------
-# import time
+import time
 import pygame
 # used in a# algorithm
 from queue import PriorityQueue
@@ -363,7 +363,7 @@ class Grid():
     def reconstruct_path(self, came_from):
         current = self.end
         while current in came_from:
-            # .time.sleep(0.3)
+            time.sleep(0.05)
             current = came_from[current]
             current.update_colour(pathClr)
 
