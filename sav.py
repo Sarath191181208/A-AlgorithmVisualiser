@@ -14,11 +14,13 @@ clock = pygame.time.Clock()
 WIN = pygame.display.set_mode((600, 680))
 pygame.display.set_caption('A* visualiser')
 FPS = 20
-# TODO: restart
-manager = pygame_gui.UIManager((600, 680))
+manager = pygame_gui.UIManager((600, 680), 'themePygame_gui.json')
 
+# TODO:  fix  dark  theme errors
 
 # return from a simple text to pygame text object
+
+
 def PYtxt(txt: str, fontSize: int = 28, font: str = 'freesansbold.ttf', fontColour: tuple = (0, 0, 0)):
     return (pygame.font.Font(font, fontSize)).render(txt, True, fontColour)
 
@@ -92,6 +94,41 @@ def load():
             board.draw()
 
 
+def help_bar():
+    text = ""
+    postfix = "block"
+    if board.start == None:
+        text = "start"
+    elif board.end == None:
+        text = "end"
+    else:
+        text = "walls"
+        postfix = ''
+    txt = PYtxt(f'place the {text} {postfix}', 16, fontColour=textClr)
+    y = 660
+    x = 10
+    gap = 10
+    WIN.blit(txt, (x, y))
+    x += txt.get_width() + 2*gap
+    y += 5
+
+    txt = PYtxt('1) left click for insert', 11, fontColour=helperTxtClr)
+    WIN.blit(txt, (x, y))
+    x += txt.get_width() + 2*gap
+
+    txt = PYtxt('2) right click to delete', 11, fontColour=helperTxtClr)
+    WIN.blit(txt, (x, y))
+    x += txt.get_width() + gap + 100
+
+    # shows the box 'N' if show numbers is true
+    y -= 5
+    if board.show_numbers:
+        text = PYtxt("N", 16, fontColour=helperTxtClr)
+        WIN.blit(text, (x, y))
+        pygame.draw.rect(WIN, textClr,
+                         pygame.Rect(x-5, y-4, text.get_width()+10, text.get_height()+6), 1)
+
+
 # colours
 WHITE = (215, 215, 215)
 GREAY = (70, 70, 70)
@@ -114,9 +151,11 @@ pathClr = VIOLET
 
 def toggleTheme(clr):
     if clr == WHITE:
-        return(BLACK, WHITE, (120, 120, 120))
+        # return(BLACK, WHITE, (120, 120, 120))
+        return BLACK
     else:
-        return(WHITE, absBlack, GREAY)
+        # return(WHITE, absBlack, GREAY)
+        return WHITE
 
 
 translationFactor = 0
@@ -170,9 +209,6 @@ class Grid():
         for i in range(self.cols+1):
             pygame.draw.line(win, BLACK, (i*colGap, 0),
                              (colGap*i, self.width), thick)
-
-        # this help_bar shows info of the board
-        self.help_bar()
 
         pygame.display.update()
 
@@ -308,7 +344,7 @@ class Grid():
         self.start = None
         self.end = None
         self.create_board()
-        if count < 10:
+        if count < 10 and not noAnimation:
             self.animation()
         self.draw()
 
@@ -329,40 +365,6 @@ class Grid():
             self.start = None
         elif self.cubes[x][y] == self.end:
             self.end = None
-
-    def help_bar(self):
-        text = ""
-        postfix = "block"
-        if self.start == None:
-            text = "start"
-        elif self.end == None:
-            text = "end"
-        else:
-            text = "walls"
-            postfix = ''
-        txt = PYtxt(f'place the {text} {postfix}', 16, fontColour=textClr)
-        y = 660
-        x = 10
-        gap = 10
-        WIN.blit(txt, (x, y))
-        x += txt.get_width() + 2*gap
-        y += 5
-
-        txt = PYtxt('1) left click for insert', 11, fontColour=helperTxtClr)
-        WIN.blit(txt, (x, y))
-        x += txt.get_width() + 2*gap
-
-        txt = PYtxt('2) right click to delete', 11, fontColour=helperTxtClr)
-        WIN.blit(txt, (x, y))
-        x += txt.get_width() + gap + 100
-
-        # shows the box 'N' if show numbers is true
-        y -= 5
-        if self.show_numbers:
-            text = PYtxt("N", 16, fontColour=helperTxtClr)
-            WIN.blit(text, (x, y))
-            pygame.draw.rect(WIN, textClr,
-                             pygame.Rect(x-5, y-4, text.get_width()+10, text.get_height()+6), 1)
 
 
 class Cube():
@@ -483,6 +485,9 @@ board = Grid(30, 30, WIN.get_width(), WIN.get_width())
 board.animation()
 board.draw()
 
+Widgetsbackground = pygame.Surface(
+    (board.width, WIN.get_height()-board.height))
+Widgetsbackground.fill(boardClr)
 
 # putting buttons relative to each other
 gap = 18
@@ -572,6 +577,7 @@ while run:
                         if cube.placed == False:
                             cube.reset()
                             cube.update()
+                board.draw()
 
         if event.type == pygame.USEREVENT:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
@@ -591,7 +597,7 @@ while run:
                         board.a_star()
 
                 if event.ui_element == toggleTheme_button:
-                    boardClr, textClr, helperTxtClr = toggleTheme(boardClr)
+                    boardClr = toggleTheme(boardClr)
                     board.animation()
                     board.draw()
 
@@ -605,10 +611,14 @@ while run:
                             if cube.placed == False:
                                 cube.reset()
                                 cube.update()
+                    board.draw()
 
         manager.process_events(event)
     manager.update(time_delta)
 
+    WIN.blit(Widgetsbackground, (0, board.height+10))
+    # this help_bar shows info of the board
+    help_bar()
     manager.draw_ui(WIN)
     pygame.display.update()
 
