@@ -8,15 +8,18 @@ import pygame
 from queue import PriorityQueue
 # used for buttons
 import pygame_gui
+# used for board creation
+import random
+import collections
 
 pygame.init()
 clock = pygame.time.Clock()
-WIN = pygame.display.set_mode((600, 680))
+WIN = pygame.display.set_mode((700, 600))
 pygame.display.set_caption('A* visualiser')
 FPS = 20
-manager = pygame_gui.UIManager((600, 680), 'themePygame_gui.json')
+manager = pygame_gui.UIManager((700, 600), 'themePygame_gui.json')
 
-# TODO:  animation of some stuff
+# TODO: stop animations button
 
 # return from a simple text to pygame text object
 
@@ -180,9 +183,46 @@ class Grid():
 
         # used to show number
         self.show_numbers = False
-
+        self._dir_one = [
+            lambda x, y: (x + 1, y),
+            lambda x, y: (x - 1, y),
+            lambda x, y: (x, y - 1),
+            lambda x, y: (x, y + 1)
+        ]
+        self._dir_two = [
+            lambda x, y: (x + 2, y),
+            lambda x, y: (x - 2, y),
+            lambda x, y: (x, y - 2),
+            lambda x, y: (x, y + 2)
+        ]
+        self._range = list(range(4))
+        self.maze = [[0 for i in range(self.rows)]
+                     for j in range(self.cols)]
         # creates self.cubes as like a 2D array
         self.create_board()
+
+    @property
+    def _random(self):
+        """Returns a random range to iterate over."""
+        random.shuffle(self._range)
+        return self._range
+
+    def _create_walk(self, x, y):
+        """Randomly walks from one pointer within the maze to another one."""
+        for idx in self._random:  # Check adjacent cells randomly
+            tx, ty = self._dir_two[idx](x, y)
+            # Check if unvisited
+            if not self._out_of_bounds(tx, ty) and self.maze[tx][ty] == 0:
+
+                self.maze[tx][ty] = self.maze[self._dir_one[idx](
+                    x, y)[0]][self._dir_one[idx](x, y)[1]] = 1  # Mark as visited
+                return tx, ty  # Return new cell
+
+        return None, None  # Return stop values
+
+    def _out_of_bounds(self, x, y):
+        """Checks if indices are out of bounds."""
+        return x < 0 or y < 0 or x >= self.rows or y >= self.cols
 
     def create_board(self, grid: tuple = (4, 4)) -> list[int]:
         self.cubes = [
@@ -190,6 +230,38 @@ class Grid():
              for j in range(self.cols)]
             for i in range(self.rows)
         ]
+
+    def _create_backtrack(self, stack):
+        """Backtracks the stack until walking is possible again."""
+        while stack:
+            x, y = stack.pop()
+            for direction in self._dir_two:  # Check adjacent cells
+                tx, ty = direction(x, y)
+                # Check if unvisited
+                if not self._out_of_bounds(tx, ty) and self.maze[tx][ty] == 0:
+                    return x, y  # Return cell with unvisited neighbour
+
+        return None, None  # Return stop values if stack is empty
+
+    def _recursive_backtracking(self):
+        """Creates a maze using the recursive backtracking algorithm."""
+        self.reset()
+        stack = collections.deque()  # List of visited cells [(x, y), ...]
+
+        x = random.randint(0, self.rows - 1)
+        y = random.randint(0, self.cols - 1)
+        self.maze[x][y] = 1  # Mark as visited
+
+        while x and y:
+            while x and y:
+                stack.append((x, y))
+                x, y = self._create_walk(x, y)
+            x, y = self._create_backtrack(stack)
+
+        for i in range(len(self.maze)):
+            for j in range(len(self.maze)):
+                if not self.maze[i][j]:
+                    self.clicked((i, j), 1)
 
     def draw(self, win=None):
         if win == None:
@@ -245,13 +317,21 @@ class Grid():
             pygame.display.update()
 
     # checks for  clicked position and returns -1 if its out of  bounds
-    def clicked(self, pos):
+    def clicked(self, pos, colour=None):
+
         # pygame.display.update()
         x, y = pos
         if x >= self.rows or y >= self.cols or x < 0:
             self.draw()
             return -1
         # if  no  start
+        if colour != None:
+            if self.cubes[x][y].colour != startClr or self.cubes[x][y].colour != endClr:
+                self.cubes[x][y].colour = obstacleClr
+            self.cubes[x][y].placed = True
+            self.cubes[x][y].clickAnimation(-6)
+            return 0
+
         if self.start == None and self.cubes[x][y].colour == WHITE:
             self.cubes[x][y].colour = startClr
             self.start = self.cubes[x][y]
@@ -365,10 +445,9 @@ class Grid():
     def reconstruct_path(self, came_from):
         current = self.end
         while current in came_from:
-
             current = came_from[current]
             current.update_colour(pathClr)
-            current.clickAnimation(3)
+            current.clickAnimation(-6)
 
     def delete(self, x, y):
         if x >= self.rows or y >= self.cols or x < 0:
@@ -420,7 +499,7 @@ class Cube():
         y = self.row * rowGap
 
         # this block of if-else draws a block on to screen
-        if not self.placed:
+        if (not self.placed):
             # this {if} is for dark theme only , boardClr represents the theme
             if self.colouring and boardClr == BLACK:
                 pygame.draw.rect(win, WHITE,
@@ -518,54 +597,87 @@ class Cube():
 
         self.draw(WIN)
 
+    def clicked(self):
+        self.colour = obstacleClr
+        self.placed = True
+        self.clickAnimation()
 
-board = Grid(30, 30, WIN.get_width(), WIN.get_width())
+
+board = Grid(30, 30, WIN.get_height(), WIN.get_height())
 board.animation()
 board.draw()
 
 Widgetsbackground = pygame.Surface(
-    (board.width, WIN.get_height()-board.height))
+    (WIN.get_width()-board.width, WIN.get_height()))
 Widgetsbackground.fill(boardClr)
 
 # putting buttons relative to each other
-gap = 18
-start = 40
-y = 612
-n = 0
-reset_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, y), (60, 40)),
-                                            text=f'Reset',
-                                            manager=manager, tool_tip_text="Reset the board    ( r : key )")
-start += 60
-n += 1
-toggleNumber_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, y), (60, 40)),
-                                                   text=f'Num',
-                                                   manager=manager, tool_tip_text="Toggle the show numbers ( n : key )")
-start += 60
-n += 1
-toggleTheme_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, y), (60, 40)),
-                                                  text='Theme',
-                                                  manager=manager, tool_tip_text="Toggle the theme    ( t : key )")
-start += 60
-n += 1
-run_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, y), (60, 40)),
-                                          text='Start',
-                                          manager=manager, tool_tip_text="start the visualisation (space : key)")
-start += 60
-n += 1
-clear_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, 612), (60, 40)),
-                                            text='Clear',
-                                            manager=manager, tool_tip_text="clear the board or   (c : key)")
-start += 60
-n += 1
-save_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, 612), (60, 40)),
-                                           text='Save',
-                                           manager=manager, tool_tip_text="saves the board or   (s : key)")
-start += 60
-n += 1
-load_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start + n * gap, 612), (60, 40)),
-                                           text='Load',
-                                           manager=manager, tool_tip_text="loads the saved board or (l : key)")
+# available space = 900-480 => 420 = (40  + gap)*items => 105-40 = 65
 
+
+def GridLayout():
+    global start, n, y
+    start += 60
+    n += 1
+    if start+n*gap > WIN.get_width() - 60:
+        start = board.width
+        y += 60
+        n = 1
+
+
+row_items = 1
+gap = (((WIN.get_width()-board.width)/row_items) - 40)/2-10
+start = board.width
+y = 60
+n = 1
+
+
+def createbuttons():
+    buttons = {
+        'reset_button': {
+            'text': 'Reset',
+            "tool_tip_text": "Reset the board    ( r : key )",
+        },
+
+        'toggleNumber_button': {
+            'text': 'Num',
+            'tool_tip_text': "Toggle the show numbers ( n : key )"
+        },
+
+        'toggleTheme_button': {
+            'text': 'Theme',
+            'tool_tip_text': "Toggle the theme    ( t : key )"
+        },
+
+        'run_button': {
+            'text': 'Start',
+            'tool_tip_text': '"start the visualisation (space : key)"'
+        },
+
+        'clear_button': {
+            'text': 'Clear',
+            'tool_tip_text': 'clear the board or   (c : key)'
+        },
+
+        'save_button': {
+            'text': 'Save',
+            'tool_tip_text': 'saves the board or   (s : key)'
+        },
+
+        'load_button': {
+            'text': 'Load',
+            'tool_tip_text': 'loads the saved board or (l : key)'
+        }
+
+    }
+
+    for name in buttons:
+        globals()[name] = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*gap, y), (60, 40)), text=buttons[name]['text'],
+                                                       manager=manager, tool_tip_text=buttons[name]['tool_tip_text'])
+        GridLayout()
+
+
+createbuttons()
 
 run = True
 
@@ -622,6 +734,8 @@ while run:
                 boardClr = toggleTheme(boardClr)
                 board.animation()
                 board.draw()
+            if event.key == pygame.K_b:
+                board._recursive_backtracking()
 
         if event.type == pygame.USEREVENT:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
@@ -656,7 +770,7 @@ while run:
         manager.process_events(event)
     manager.update(time_delta)
 
-    WIN.blit(Widgetsbackground, (0, board.height+10))
+    WIN.blit(Widgetsbackground, (board.width+3, 0))
     # this help_bar shows info of the board
     help_bar()
     manager.draw_ui(WIN)
