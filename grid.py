@@ -55,6 +55,10 @@ class Grid():
         self.colour = boardClr
         global themeColour
         themeColour = self.colour
+        self.surface = pygame.Surface(
+            (self.width, self.height))
+        self.surface.fill(self.colour)
+
         # creates self.cubes as like a 2D array
         self.create_board()
 
@@ -133,7 +137,7 @@ class Grid():
         '''draws/updates the board onto the screen '''
 
         win = self.WIN
-        win.fill(self.colour)
+        win.blit(self.surface, (0, 0))
 
         rowGap = self.height / self.rows
         colGap = self.width / self.cols
@@ -162,7 +166,7 @@ class Grid():
         '''animation of the board'''
         # linearly interpolating animate variable from o to possibly higher than 1
         win = self.WIN
-        win.fill(self.colour)
+        win.blit(self.surface, (0, 0))
         # animation for  dark theme
         if self.colour == BLACK:
             for row in self.cubes:
@@ -194,25 +198,31 @@ class Grid():
         x, y = pos
         if x >= self.rows or y >= self.cols or x < 0:
             self.draw()
-            return -1
-
+            return 'out of bounds'
         # if  no  start
-        if self.start == None and self.cubes[x][y].colour == WHITE:
-            self.cubes[x][y].colour = startClr
+        # if self.cubes[x][y].colour != WHITE:
+        #     return "no space to fill"
+        if self.start == None and self.cubes[x][y].colour != endClr:
             self.start = self.cubes[x][y]
-            self.cubes[x][y].placed = True
+            self.cubes[x][y].clicked(6, startClr)
+            # self.cubes[x][y].colour = startClr
+            # self.cubes[x][y].placed = True
+            # self.cubes[x][y].clickAnimation()
 
         # if no end
-        elif self.end == None and self.cubes[x][y].colour == WHITE:
-            self.cubes[x][y].colour = endClr
+        elif self.end == None and self.cubes[x][y].colour != startClr:
             self.end = self.cubes[x][y]
-            self.cubes[x][y].placed = True
+            self.cubes[x][y].clicked(6, endClr)
+            # self.cubes[x][y].colour = endClr
+            # self.cubes[x][y].placed = True
+            # self.cubes[x][y].clickAnimation()
 
         # end and start  are present
-        elif self.cubes[x][y].colour == WHITE:
-            self.cubes[x][y].colour = obstacleClr
-            self.cubes[x][y].placed = True
-        self.cubes[x][y].clickAnimation()
+        elif self.cubes[x][y].colour not in [startClr, endClr]:
+            self.cubes[x][y].clicked(6)
+            # self.cubes[x][y].colour = obstacleClr
+            # self.cubes[x][y].placed = True
+            # self.cubes[x][y].clickAnimation()
         # self.draw()
 
     def a_star(self):
@@ -341,6 +351,7 @@ class Grid():
         global themeColour
         self.colour = clr
         themeColour = self.colour
+        self.surface.fill(self.colour)
         self.animation()
         self.draw()
 
@@ -382,6 +393,7 @@ class Cube():
     def draw(self):
         '''draws the cube on to the screen'''
         win = self.WIN
+
         rowGap = self.height / self.rows
         colGap = self.width / self.cols
         x = self.col * colGap
@@ -494,8 +506,12 @@ class Cube():
 
         self.draw()
 
-    def clicked(self):
+    def clicked(self, add=0, colour=None):
         '''clicks the cube useful for in maze generation'''
-        self.colour = obstacleClr
+        if colour == None:
+            self.colour = obstacleClr
+        else:
+            self.colour = colour
+
         self.placed = True
-        self.clickAnimation(-6)
+        self.clickAnimation(-6 + add)
