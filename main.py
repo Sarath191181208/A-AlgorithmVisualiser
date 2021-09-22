@@ -11,7 +11,6 @@ from pygame_gui.core.ui_element import ObjectID, UIElement
 # used for board creation
 from grid import *
 from colours import *
-from store import *
 
 pygame.init()
 clock = pygame.time.Clock()
