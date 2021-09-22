@@ -1,3 +1,5 @@
+import json
+import os
 import random
 import collections
 from queue import PriorityQueue
@@ -355,6 +357,72 @@ class Grid():
         self.animation()
         self.draw()
 
+    def toggle_show_numbers(self):
+        self.show_numbers = not self.show_numbers
+        self.draw()
+    
+    def start(self):
+        if self.start is not None and self.end is not None:
+            self.reset()
+            self.a_star()
+    
+    def save(self):
+        if not os.path.exists('./saveBoard.json'):
+            with open('./saveBoard.json', 'a') as outfile:
+                json_object = json.dumps({})
+                outfile.write(json_object)
+        with open('./saveBoard.json', 'r+') as outfile:
+            boardState = {}
+            boardState['board'] = {}
+            helperDic = {}
+            for row in self.cubes:
+                for cube in row:
+                    if cube.colour == obstacleClr:
+                        x, y = cube.get_pos()
+                        key = str(x)+','+str(y)
+                        helperDic[key] = cube.colour
+            boardState['board'][0] = helperDic
+            boardState['board'][1] = self.start.get_pos()
+            boardState['board'][2] = self.end.get_pos()
+            boardState['board']['rows'] = self.rows
+            boardState['board']['cols'] = self.cols
+
+            file_data = json.load(outfile)
+            outfile.seek(0, 0)
+            outfile.truncate()
+            file_data.update(boardState)
+            outfile.write(json.dumps(file_data, indent=4))
+
+    def load(self):
+        if os.path.exists('./saveBoard.json'):
+            data = json.load(open('./saveBoard.json'))
+            data = data['board']
+            if self.rows == data['rows'] and self.cols == data['cols']:
+                # self clear has a property noAnimation which doesnt play animation
+                self.clear(True)
+
+                x, y = data['1'][0], data['1'][1]
+                self.start = self.cubes[x][y]
+                self.cubes[x][y].colour = startClr
+                self.cubes[x][y].placed = True
+
+                x, y = data['2'][0], data['2'][1]
+                self.end = self.cubes[x][y]
+                self.cubes[x][y].colour = endClr
+                self.cubes[x][y].placed = True
+
+                for items in data['0']:
+                    items = items.split(',')
+                    x = int(items[0])
+                    y = int(items[1])
+                    self.cubes[x][y].colour = obstacleClr
+                    self.cubes[x][y].placed = True
+                # this is because we have to update cube at dark mode its not needed in light  because the  animation plays again
+                self.animation()
+                self.draw()
+
+    def generate_maze(self):
+        self._recursive_backtracking()
 
 class Cube():
     def __init__(self, value, row, col, width, height, cols, rows, WIN):

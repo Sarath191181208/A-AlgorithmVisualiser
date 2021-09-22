@@ -1,7 +1,13 @@
+from typing import Dict, Union
 import pygame
 # used for buttons
 import pygame_gui
 import time
+
+# required for altering with button class 
+from pygame_gui.core.interfaces.container_interface import IContainerLikeInterface
+from pygame_gui.core.interfaces.manager_interface import IUIManagerInterface
+from pygame_gui.core.ui_element import ObjectID, UIElement
 # used for board creation
 from grid import *
 from colours import *
@@ -11,7 +17,7 @@ pygame.init()
 clock = pygame.time.Clock()
 WIN = pygame.display.set_mode((720, 700))
 pygame.display.set_caption('A* visualiser')
-FPS = 20
+FPS = 60
 manager = pygame_gui.UIManager(
     (WIN.get_width(), WIN.get_height()), 'themePygame_gui.json')
 
@@ -20,6 +26,15 @@ help = {}
 showHelp = False
 mouseClicks = True
 
+class Btn(pygame_gui.elements.UIButton):
+    def __init__(self, relative_rect: pygame.Rect, text: str, manager: IUIManagerInterface, container: Union[IContainerLikeInterface, None] = None, tool_tip_text: Union[str, None] = None, starting_height: int = 1, parent_element: UIElement = None, object_id: Union[ObjectID, str, None] = None, anchors: Dict[str, str] = None, allow_double_clicks: bool = False, visible: int = 1,func = None):
+        self.func = func
+        super().__init__(relative_rect, text, manager, container=container, tool_tip_text=tool_tip_text, starting_height=starting_height, parent_element=parent_element, object_id=object_id, anchors=anchors, allow_double_clicks=allow_double_clicks, visible=visible)
+    
+    def update(self, time_delta: float):
+        if self.check_pressed() and self.func is not None:
+            self.func()
+        return super().update(time_delta)
 
 def PYtxt(txt: str, fontSize: int = 28, font: str = 'freesansbold.ttf', fontColour: tuple = (0, 0, 0)):
     return (pygame.font.Font(font, fontSize)).render(txt, True, fontColour)
@@ -36,37 +51,6 @@ def changeTheme():
     board.toggle_theme(boardClr)
 
 
-def checkButtonpress():
-    global boardClr
-    if event.ui_element == clear_button:
-        board.clear()
-
-    if event.ui_element == save_button:
-        if board.start and board.end:
-            save(board)
-
-    if event.ui_element == load_button:
-        load(board)
-
-    if event.ui_element == run_button:
-        if board.start and board.end:
-            board.reset()
-            board.a_star()
-
-    if event.ui_element == toggleTheme_button:
-        changeTheme()
-
-    if event.ui_element == toggleNumber_button:
-        board.show_numbers = not board.show_numbers
-        board.draw()
-
-    if event.ui_element == reset_button:
-        board.reset()
-
-    if event.ui_element == create_button:
-        board._recursive_backtracking()
-
-
 def checkKeypress():
     global boardClr
     if event.key == pygame.K_SPACE and board.start and board.end:
@@ -78,10 +62,10 @@ def checkKeypress():
 
     if event.key == pygame.K_s:
         if board.start and board.end:
-            save(board)
+            board.save()
 
     if event.key == pygame.K_l:
-        load(board)
+        board.load()
 
     if event.key == pygame.K_r:
         board.reset()
@@ -110,53 +94,18 @@ def showtext():
         pygame.draw.rect(WIN, textClr,
                          pygame.Rect(x-5, y-4, text.get_width()+10, text.get_height()+6), 1)
 
+def toggle_help():
+    global showHelp, mouseClicks
+    if showHelp == True:
+            board.draw()
+    showHelp = not showHelp
+    mouseClicks = not mouseClicks
 
 def createbuttons():
 
-    buttons = {
-        'reset_button': {
-            'text': 'Reset',
-            "tool_tip_text": "Reset the board    ( r : key )",
-        },
-
-        'toggleNumber_button': {
-            'text': 'Num',
-            'tool_tip_text': "Toggle the show numbers ( n : key )"
-        },
-
-        'toggleTheme_button': {
-            'text': 'Theme',
-            'tool_tip_text': "Toggle the theme    ( t : key )"
-        },
-
-        'run_button': {
-            'text': 'Start',
-            'tool_tip_text': '"start the visualisation (space : key)"'
-        },
-
-        'clear_button': {
-            'text': 'Clear',
-            'tool_tip_text': 'clear the board or   (c : key)'
-        },
-
-        'save_button': {
-            'text': 'Save',
-            'tool_tip_text': 'saves the board or   (s : key)'
-        },
-
-        'load_button': {
-            'text': 'Load',
-            'tool_tip_text': 'loads the saved board or (l : key)'
-        },
-        'create_button': {
-            'text': 'Create',
-            'tool_tip_text': 'creates a random maze or (m : key)'
-        }
-
-    }
     global help
     row_items = ((WIN.get_width()-board.width)-10)//60
-    col_items = len(buttons)//row_items
+    col_items = 9//row_items
     row_gap = (((WIN.get_width()-board.width)/row_items) - 60)/2
     col_gap = (((WIN.get_height())/col_items-40))
     start = board.width
@@ -165,24 +114,34 @@ def createbuttons():
     y_count = 0
 
     # creating buttons
-    for name in buttons:
-        globals()[name] = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((start+n*row_gap, y + y_count*col_gap), (60, 40)), text=buttons[name]['text'],
-                                                       manager=manager, tool_tip_text=None)
+    for (btn_name,tool_tip,func) in [
+        ("Reset","Reset the board    ( r : key )",lambda:board.reset()),
+        ("NUM", "Toggle the show numbers ( n : key )",lambda: board.toggle_show_numbers()),
+        ("Theme", "Toggle the theme    ( t : key )",lambda: board.toggle_theme()),
+        ("Start", "start the visualisation (space : key)",lambda: board.toggle_theme()),
+        ("Start", "start the visualisation (space : key)",lambda: board.start()),
+        ("Clear", "clear the board or   (c : key)",lambda: board.clear()),
+        ("Save", "saves the board or   (s : key)",lambda: board.save()),
+        ("Load", "loads the saved board or (l : key)",lambda: board.load()),
+        ("Create", "creates a random maze or (m : key)",lambda: board.generate_maze()),
+    ]:
+        Btn(relative_rect=pygame.Rect((start+n*row_gap, y + y_count*col_gap), (60, 40)), text= btn_name,
+                                manager=manager, tool_tip_text=None,
+                                func= func)
+        
         # first index stores tool tip text , second index stores position of button
-        help[buttons[name]['text']] = [buttons[name]
-                                       ['tool_tip_text'], (start+n*row_gap, y + y_count*col_gap)]
-        # updating so the bubttons will go next to each other
-        start += 60
+        help[btn_name] = tool_tip, (start+n*row_gap, y + y_count*col_gap)
+        # updating so the buttons will go next to each other
+        start += 20
         n += 1
         # if the buttons fill the  whole width then they are pushed down
         if start+n*row_gap > WIN.get_width() - 60:
             start = board.width
             n = 1
             y_count += 1
-            y += 40
-    name = 'help_button'
-    globals()[name] = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((10, board.height+30), (30, 30)), text='?',
-                                                   manager=manager, tool_tip_text=None)
+            y += 20
+    Btn(relative_rect=pygame.Rect((10, board.height+30), (30, 30)), text='?',
+manager=manager, tool_tip_text=None, func = lambda : toggle_help() )
 
 
 def toggleTheme(clr):
@@ -242,18 +201,6 @@ while run:
         if event.type == pygame.KEYDOWN:
             if mouseClicks:
                 checkKeypress()
-
-        if event.type == pygame.USEREVENT:
-            if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                if mouseClicks:
-                    checkButtonpress()
-
-            # this is written here because we need to click even if mouse clicks is off
-                if event.ui_element == help_button:
-                    if showHelp == True:
-                        board.draw()
-                    showHelp = not showHelp
-                    mouseClicks = not mouseClicks
 
         manager.process_events(event)
     manager.update(time_delta)
