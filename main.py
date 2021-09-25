@@ -58,7 +58,7 @@ def checkKeypress():
         if board.start and board.end:
             board.save()
 
-    if event.key == pygame.K_l:
+    if event.key == pygame.K_o:
         board.load()
 
     if event.key == pygame.K_r:
