@@ -52,8 +52,8 @@ class Grid():
         ]
 
         self._range = list(range(4))
-        self.maze = [[0 for i in range(self.rows)]
-                     for j in range(self.cols)]
+        self.maze = [[0 for _ in range(self.rows)]
+                     for _ in range(self.cols)]
         self.colour = boardClr
         global themeColour
         themeColour = self.colour
@@ -87,7 +87,7 @@ class Grid():
         """Checks if indices are out of bounds."""
         return x < 0 or y < 0 or x >= self.rows or y >= self.cols
 
-    def create_board(self, grid: tuple = (4, 4)) -> list[int]:
+    def create_board(self) -> list[int]:
         self.cubes = [
             [Cube(None, i, j, self.width, self.height, self.cols, self.rows, self.WIN)
              for j in range(self.cols)]
@@ -139,7 +139,7 @@ class Grid():
         '''draws/updates the board onto the screen '''
 
         win = self.WIN
-        win.blit(self.surface, (0, 0))
+        # win.blit(self.surface, (0, 0))
 
         rowGap = self.height / self.rows
         colGap = self.width / self.cols
@@ -162,7 +162,7 @@ class Grid():
                 pygame.draw.line(win, gridClr, (i*colGap, 0),
                                  (colGap*i, self.width), thick)
 
-        pygame.display.update()
+        # pygame.display.update()
 
     def animation(self):
         '''animation of the board'''
@@ -174,66 +174,65 @@ class Grid():
             for row in self.cubes:
                 for cube in row:
                     cube.update()
-            return
-        rowGap = self.height / self.rows
-        colGap = self.width / self.cols
-        animate = 0.001
-        while(True):
-            for i in range(self.rows+1):
-                pygame.draw.line(win, gridClr, (0, i*rowGap),
-                                 (self.height*animate, rowGap*i), 1)
-            for i in range(self.cols+1):
-                pygame.draw.line(win, gridClr, (i*colGap, 0),
-                                 (colGap*i, self.width*animate), 1)
-            animate += 0.00075
-            if animate >= 1:
-                break
+        else:
+            rowGap = self.height / self.rows
+            colGap = self.width / self.cols
+            animate = 0.005
+            while(True):
+                for i in range(self.rows+1):
+                    pygame.draw.line(win, gridClr, (0, i*rowGap),
+                                    (self.height*animate, rowGap*i), 1)
+                for i in range(self.cols+1):
+                    pygame.draw.line(win, gridClr, (i*colGap, 0),
+                                    (colGap*i, self.width*animate), 1)
+                animate += 0.00075
+                if animate >= 1:
+                    break
+                pygame.display.update()
+        
+        for row in self.cubes:
+            for cube in row:
+                cube.cube_width = 0
+                cube.animate = True
 
-            pygame.display.update()
 
     # checks for  clicked position and returns -1 if its out of  bounds
     def clicked(self, pos):
-        '''clicks at a position
-        :param pos: tuple(x,y)
-        '''
-        # pygame.display.update()
+
         x, y = pos
         if x >= self.rows or y >= self.cols or x < 0:
             self.draw()
             return 'out of bounds'
-        # if  no  start
-        # if self.cubes[x][y].colour != WHITE:
-        #     return "no space to fill"
+        if self.cubes[x][y].placed == True:
+            return
+
         if self.start == None and self.cubes[x][y].colour != endClr:
             self.start = self.cubes[x][y]
             self.cubes[x][y].clicked(6, startClr)
-            # self.cubes[x][y].colour = startClr
-            # self.cubes[x][y].placed = True
-            # self.cubes[x][y].clickAnimation()
 
         # if no end
         elif self.end == None and self.cubes[x][y].colour != startClr:
             self.end = self.cubes[x][y]
             self.cubes[x][y].clicked(6, endClr)
-            # self.cubes[x][y].colour = endClr
-            # self.cubes[x][y].placed = True
-            # self.cubes[x][y].clickAnimation()
+            self.a_star()
 
         # end and start  are present
         elif self.cubes[x][y].colour not in [startClr, endClr]:
             self.cubes[x][y].clicked(6)
-            # self.cubes[x][y].colour = obstacleClr
-            # self.cubes[x][y].placed = True
-            # self.cubes[x][y].clickAnimation()
-        # self.draw()
 
     def a_star(self):
         '''A* algorithm to solve the grid'''
         # traverses cubes and updates neighbours
         # we can also do the update at  the time of  placing
-        for row in self.cubes:
-            for cube in row:
+        # self.reset()
+
+        for i,row in enumerate(self.cubes):
+            for j,cube in enumerate(row):
                 cube.update_neighbours(self)
+                if cube.placed == False:
+                    cube.reset()
+                    cube.update()
+                    self.maze[i][j] = 0
 
         # count is kinda basically score of best path
         count = 0
@@ -258,6 +257,9 @@ class Grid():
         open_set_hash = {self.start}
 
         while not open_set.empty():
+            # time.sleep(0.2)
+            # pygame.display.update()
+            # self.draw()
             # this is to quit  even in while loop
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -268,7 +270,6 @@ class Grid():
             current = open_set.get()[2]
             # removes cube from possibilities
             open_set_hash.remove(current)
-
             # if we reached end
             if current == self.end:
                 self.reconstruct_path(came_from)
@@ -292,40 +293,39 @@ class Grid():
                         open_set.put((f_score[neighbour], count, neighbour))
                         open_set_hash.add(neighbour)
                         # updating the neighbour
-                        neighbour.update_colour(CYAN, f_score[neighbour])
+                        neighbour.update_colour(RED, f_score[neighbour])
+                        neighbour.animate = True
 
             # if this node is already visited update colour
             if current != self.start:
                 current.update_colour(TURTLEGREEN)
+                # sm = 0
+                # for neighbour in current.neighbours:
+                #     if neighbour.colour == WHITE:
+                #         sm += 1
+                # if sm == 0:
+                #         current.update_colour(RED,f_score[current])
+                neighbour.animate = True
 
         return False
 
     def reset(self):
         '''resets the board leaving start , end , walls '''
-        for row in self.cubes:
-            for cube in row:
+        for i,row in enumerate(self.cubes):
+            for j,cube in enumerate(row):
                 if cube.placed == False:
                     cube.reset()
                     cube.update()
-        self.draw()
+                    self.maze[i][j] = 0
 
-    def clear(self, noAnimation=False):
+
+    def clear(self):
         '''clears the current board 
-        :param noAnimation: False  
         '''
-        count = 0
-        for row in self.cubes:
-            for cube in row:
-                if cube.colour != WHITE:
-                    count += 1
-                cube.reset()
-                cube.update()
+        self.reset()
         self.start = None
         self.end = None
         self.create_board()
-        if count < 10 and not noAnimation:
-            self.animation()
-        self.draw()
 
     def reconstruct_path(self, came_from):
         '''reconstructs the path 
@@ -335,7 +335,7 @@ class Grid():
         while current in came_from:
             current = came_from[current]
             current.update_colour(pathClr)
-            current.clickAnimation(-6)
+            current.animate = True
 
     def delete(self, x, y):
         '''delete a cube at  certain position'''
@@ -361,16 +361,20 @@ class Grid():
         self.show_numbers = not self.show_numbers
         self.draw()
     
-    def start(self):
+    def start_(self):
         if self.start is not None and self.end is not None:
             self.reset()
             self.a_star()
     
     def save(self):
+        if self.start is None or self.end is None:
+            return
+
         if not os.path.exists('./saveBoard.json'):
             with open('./saveBoard.json', 'a') as outfile:
                 json_object = json.dumps({})
                 outfile.write(json_object)
+
         with open('./saveBoard.json', 'r+') as outfile:
             boardState = {}
             boardState['board'] = {}
@@ -394,35 +398,46 @@ class Grid():
             outfile.write(json.dumps(file_data, indent=4))
 
     def load(self):
+
         if os.path.exists('./saveBoard.json'):
+            self.animation()
+
             data = json.load(open('./saveBoard.json'))
             data = data['board']
+
             if self.rows == data['rows'] and self.cols == data['cols']:
                 # self clear has a property noAnimation which doesnt play animation
-                self.clear(True)
+                self.clear()
 
+                # setting start
                 x, y = data['1'][0], data['1'][1]
                 self.start = self.cubes[x][y]
-                self.cubes[x][y].colour = startClr
-                self.cubes[x][y].placed = True
+                self.cubes[x][y].clicked(6, startClr)
 
+                # setting end
                 x, y = data['2'][0], data['2'][1]
                 self.end = self.cubes[x][y]
-                self.cubes[x][y].colour = endClr
-                self.cubes[x][y].placed = True
+                self.cubes[x][y].clicked(6, endClr)
 
+                # setting blocks
                 for items in data['0']:
                     items = items.split(',')
                     x = int(items[0])
                     y = int(items[1])
-                    self.cubes[x][y].colour = obstacleClr
-                    self.cubes[x][y].placed = True
+                    self.cubes[x][y].clicked(6)
+                    
                 # this is because we have to update cube at dark mode its not needed in light  because the  animation plays again
-                self.animation()
                 self.draw()
 
     def generate_maze(self):
+        self.clear()
         self._recursive_backtracking()
+    
+    def update(self):
+        for row in self.cubes:
+            for cube in row:
+                cube.update()
+        self.draw()
 
 class Cube():
     def __init__(self, value, row, col, width, height, cols, rows, WIN):
@@ -435,6 +450,8 @@ class Cube():
         # this is the total width and height of the grid not the cube
         self.width = width
         self.height = height
+
+        self.cube_width,self.cube_height = 0,0
 
         # useful for later caluculations the total rows and cols
         self.cols = cols
@@ -458,6 +475,8 @@ class Cube():
         # drawing canvas
         self.WIN = WIN
 
+        self.animate = False
+
     def draw(self):
         '''draws the cube on to the screen'''
         win = self.WIN
@@ -466,7 +485,11 @@ class Cube():
         colGap = self.width / self.cols
         x = self.col * colGap
         y = self.row * rowGap
-
+        if self.animate:
+            pygame.draw.rect(win, self.colour,
+                             pygame.Rect(x+3, y+3, self.cube_width-5, self.cube_height-5))
+            return
+        
         # this block of if-else draws a block on to screen
         if (not self.placed):
             # this {if} is for dark theme only , self.colour represents the theme
@@ -495,8 +518,10 @@ class Cube():
 
     def update(self):
         '''updates the  cube on the  screen'''
-        self.draw()
-        pygame.display.update()
+        # self.draw()
+        if self.animate:
+            self.clickAnimation()
+        # pygame.display.update()
 
     def get_pos(self):
         '''returns the row and coloumn in the grid'''
@@ -544,6 +569,8 @@ class Cube():
     def reset(self):
         '''resets the cube  into original state'''
         self.placed = False
+        # self.animate = False
+        self.cube_width,self.cube_height = 0,0
         self.colouring = False
         self.colour = WHITE
         self.value = None
@@ -563,16 +590,17 @@ class Cube():
         colGap = self.width / self.cols
         x = self.col * colGap
         y = self.row * rowGap
-        width = colGap - 10 - sub
-        while True:
-            width += 0.05
-            pygame.draw.rect(self.WIN, self.colour,
-                             pygame.Rect(x+(colGap-width)/2, y+(colGap-width)/2, width, width))
-            pygame.display.update()
-            if width >= colGap:
-                break
+        self.cube_width += 1
+        pygame.draw.rect(self.WIN, self.colour,
+                            pygame.Rect(x+(colGap-self.cube_width)/2, y+(colGap-self.cube_width)/2, self.cube_width, self.cube_width))
+        # pygame.display.update()
+        if self.cube_width >= colGap:
+            self.cube_width,self.cube_height = 0, 0
+            self.cube_width = colGap
+            self.animate = False
 
         self.draw()
+    
 
     def clicked(self, add=0, colour=None):
         '''clicks the cube useful for in maze generation'''
@@ -582,4 +610,5 @@ class Cube():
             self.colour = colour
 
         self.placed = True
-        self.clickAnimation(-6 + add)
+        self.cube_width = 0
+        self.animate = True

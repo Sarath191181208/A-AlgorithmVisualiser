@@ -11,6 +11,7 @@ CYAN = pygame.Color('#64d2b4')
 BLUE = pygame.Color('#03Abfc')
 YELLOW = pygame.Color('#ffeb00')
 absBlack = pygame.Color('#000000')
+RED = pygame.Color('#f00050')
 
 
 boardClr = WHITE
