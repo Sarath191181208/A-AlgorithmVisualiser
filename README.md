@@ -4,7 +4,7 @@ A simple application in **python** using **pygame** inspired from tech with tim 
 
 # Description
 
-A grid layout is followed in the application. Left click to inserrt blocks, Right to delete. This application visualises what is the shortest path between the points is.
+A grid layout is followed in the application. Left click to insert blocks, Right to delete. This application visualises what is the shortest path between the points is.
 
 ## Demo
 
